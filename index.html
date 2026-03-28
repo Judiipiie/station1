@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>We Are The Data — Station 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --gold:#E8A020;--gold-l:#FAC75A;--green:#1A8C6A;--green-l:#4DBFA0;
+  --purple:#6B5CE7;--purple-l:#A89FF5;--coral:#E05C3A;--pink:#D4537E;
+  --dark:#0E0D0A;--surf:#161510;--bord:#252318;--text:#F0EDE6;--muted:#55504A;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--dark);color:var(--text);font-family:'DM Sans',sans-serif;}
+
+/* VIEWS */
+#view-universe,#view-form,#view-analytics{position:fixed;inset:0;display:none;flex-direction:column;}
+#view-universe{display:flex;}
+#view-form{background:var(--surf);overflow-y:auto;padding-bottom:70px;}
+#view-analytics{background:var(--dark);overflow-y:auto;padding-bottom:70px;}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:0 1rem;height:52px;background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0;z-index:20;}
+.hdr-l{display:flex;align-items:center;gap:10px;}
+.s-tag{background:var(--gold);color:#1a1200;font-family:'Syne',sans-serif;font-weight:800;font-size:10px;padding:3px 10px;border-radius:999px;letter-spacing:.1em;text-transform:uppercase;}
+.h-title{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:-.02em;}
+.h-title em{color:var(--gold);font-style:normal;}
+.hdr-r{display:flex;align-items:center;gap:8px;}
+.live-pill{display:flex;align-items:center;gap:5px;background:#1a1f1a;border:1px solid #1D9E75;border-radius:999px;padding:3px 10px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green-l);animation:blink 1.4s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.live-n{font-family:'Syne',sans-serif;font-weight:800;font-size:13px;color:var(--green-l);}
+.icon-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;padding:4px;line-height:1;}
+
+/* FILTER STRIP */
+#filter-strip{display:flex;align-items:center;gap:5px;padding:7px 12px 6px;border-bottom:1px solid #1e1c17;overflow-x:auto;flex-shrink:0;}
+#filter-strip::-webkit-scrollbar{display:none;}
+.f-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);white-space:nowrap;margin-right:3px;}
+.f-btn{font-size:11px;font-weight:500;padding:4px 12px;border-radius:999px;border:1px solid var(--bord);background:transparent;color:#777;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:'DM Sans',sans-serif;flex-shrink:0;}
+.f-btn:hover{border-color:var(--gold);color:var(--gold-l);}
+.f-btn.active{background:var(--gold);color:#1a1200;border-color:var(--gold);font-weight:700;}
+
+/* CANVAS */
+#canvas-wrap{flex:1;position:relative;overflow:hidden;}
+canvas{position:absolute;inset:0;}
+#glabels{position:absolute;inset:0;pointer-events:none;z-index:5;}
+.glabel{position:absolute;transform:translate(-50%,-50%);font-family:'Syne',sans-serif;font-weight:800;font-size:11px;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .5s;text-shadow:0 0 20px currentColor;}
+.glabel.on{opacity:1;}
+#flash{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:var(--gold);color:#1a1200;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;padding:5px 16px;border-radius:999px;pointer-events:none;opacity:0;z-index:40;white-space:nowrap;transition:opacity .25s;}
+#conn-status{position:absolute;bottom:10px;right:12px;font-size:10px;padding:3px 10px;border-radius:999px;font-weight:600;z-index:10;}
+#conn-status.ok{background:#0d2e22;color:var(--green-l);border:1px solid var(--green);}
+#conn-status.err{background:#2e1010;color:var(--coral);border:1px solid var(--coral);}
+
+/* TOOLTIP */
+#tooltip{position:absolute;pointer-events:none;background:rgba(12,11,8,.97);border:1px solid #333;border-radius:12px;padding:10px 13px;min-width:170px;opacity:0;transition:opacity .12s;z-index:30;}
+.tt-n{font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:var(--gold);margin-bottom:6px;}
+.tt-r{font-size:11px;color:#555;display:flex;justify-content:space-between;gap:10px;margin-bottom:2px;}
+.tt-v{color:#ccc;text-align:right;}
+.tt-yes{color:var(--green-l);}.tt-no{color:var(--coral);}
+
+/* BOTTOM NAV */
+#nav-bar{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--surf);border-top:1px solid var(--bord);z-index:50;height:56px;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;transition:color .15s;}
+.nav-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;}
+.nav-btn.active{color:var(--gold);}
+
+/* FORM */
+.form-inner{max-width:520px;margin:0 auto;padding:1rem 1rem 0;}
+.form-section{margin-bottom:1rem;}
+.sec-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);display:block;margin-bottom:6px;}
+.upload-zone{border:1.5px dashed var(--bord);border-radius:12px;padding:.8rem;text-align:center;cursor:pointer;transition:all .2s;background:#111;}
+.upload-zone:hover{border-color:var(--gold);}
+.upload-zone.filled{border-style:solid;border-color:var(--green);padding:5px;}
+#preview-img{width:100%;border-radius:8px;max-height:120px;object-fit:cover;display:none;}
+.u-icon{font-size:22px;margin-bottom:3px;}.u-txt{font-size:12px;color:#555;}
+#file-input{display:none;}
+.scan-bar{height:3px;background:var(--bord);border-radius:2px;overflow:hidden;display:none;margin-top:6px;}
+.scan-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--green-l),var(--purple-l));width:0;transition:width 2s ease;}
+.fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:4px;}
+.fi,.fs{width:100%;padding:8px 10px;background:#111;border:1px solid var(--bord);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;transition:border-color .15s;}
+.fi:focus,.fs:focus{outline:none;border-color:var(--gold);}
+.fs option{background:#111;}
+.chip-grid{display:flex;flex-wrap:wrap;gap:5px;}
+.chip{font-size:12px;padding:5px 11px;border-radius:999px;border:1px solid var(--bord);background:transparent;color:#777;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;}
+.chip:hover{border-color:var(--gold);color:var(--gold-l);}
+.chip.sel{background:var(--gold);color:#1a1200;border-color:var(--gold);font-weight:600;}
+.viral-row{display:flex;gap:8px;}
+.vbtn{flex:1;padding:9px;border-radius:10px;border:1px solid var(--bord);background:transparent;color:#666;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;}
+.vbtn.yes.sel{background:#0d2e22;border-color:var(--green-l);color:var(--green-l);}
+.vbtn.no.sel{background:#2e1010;border-color:var(--coral);color:var(--coral);}
+.submit-btn{width:100%;padding:13px;background:var(--gold);color:#100d00;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;border:none;border-radius:12px;cursor:pointer;letter-spacing:.03em;transition:all .15s;margin-top:4px;}
+.submit-btn:hover{background:var(--gold-l);}
+.submit-btn:disabled{background:#333;color:#666;cursor:not-allowed;}
+
+/* ANALYTICS */
+.analytics-inner{max-width:900px;margin:0 auto;padding:1rem;}
+.analytics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;}
+.chart-card{background:var(--surf);border:1px solid var(--bord);border-radius:16px;padding:1.1rem 1.25rem;}
+.chart-title{font-family:'Syne',sans-serif;font-weight:800;font-size:13px;color:var(--text);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+.chart-count{font-size:11px;color:var(--muted);font-weight:400;}
+.bar-list{display:flex;flex-direction:column;gap:7px;}
+.bar-row{display:flex;align-items:center;gap:8px;}
+.bar-lbl{font-size:11px;color:#aaa;width:110px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bar-track{flex:1;height:20px;background:#1e1c17;border-radius:4px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;justify-content:flex-end;padding-right:6px;min-width:26px;}
+.bar-num{font-size:10px;font-weight:700;color:rgba(255,255,255,.6);}
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem;}
+.stat-card{background:var(--surf);border:1px solid var(--bord);border-radius:12px;padding:.9rem 1rem;}
+.stat-val{font-family:'Syne',sans-serif;font-weight:800;font-size:26px;color:var(--gold);}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* QR */
+#qr-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+#qr-overlay.open{display:flex;}
+#qr-box{background:#fff;border-radius:16px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.qr-title{font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:#1a1200;}
+.qr-sub{font-size:11px;color:#555;text-align:center;max-width:210px;}
+.qr-url{font-size:10px;color:#888;max-width:220px;text-align:center;word-break:break-all;}
+.qr-close{background:var(--gold);color:#1a1200;font-family:'Syne',sans-serif;font-weight:800;font-size:13px;padding:8px 24px;border-radius:999px;border:none;cursor:pointer;margin-top:4px;}
+</style>
+</head>
+<body>
+
+<!-- ══ UNIVERSE ══ -->
+<div id="view-universe" style="display:flex;">
+  <div class="hdr">
+    <div class="hdr-l">
+      <span class="s-tag">Station 1</span>
+      <div class="h-title">We Are <em>The Data</em></div>
+    </div>
+    <div class="hdr-r">
+      <div class="live-pill"><div class="live-dot"></div><span class="live-n" id="live-num">0</span></div>
+      <button class="icon-btn" onclick="openQR()" title="QR Code">⊞</button>
+    </div>
+  </div>
+  <div id="filter-strip">
+    <span class="f-lbl">Group</span>
+    <button class="f-btn active" onclick="setGroup('none',this)">Free float</button>
+    <button class="f-btn" onclick="setGroup('platform',this)">Platform</button>
+    <button class="f-btn" onclick="setGroup('content',this)">Content type</button>
+    <button class="f-btn" onclick="setGroup('viral',this)">Sees self viral</button>
+    <button class="f-btn" onclick="setGroup('vibe',this)">Vibe</button>
+    <button class="f-btn" onclick="setGroup('subject',this)">Subject</button>
+    <button class="f-btn" onclick="setGroup('city',this)">City</button>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="bc"></canvas>
+    <div id="glabels"></div>
+    <div id="flash"></div>
+    <div id="conn-status" class="ok">● Live</div>
+    <div id="tooltip">
+      <div class="tt-n" id="tt-name"></div>
+      <div class="tt-r"><span>Platform</span><span class="tt-v" id="tt-plat"></span></div>
+      <div class="tt-r"><span>Content</span><span class="tt-v" id="tt-cont"></span></div>
+      <div class="tt-r"><span>Sees self viral?</span><span class="tt-v" id="tt-vir"></span></div>
+      <div class="tt-r"><span>Subject</span><span class="tt-v" id="tt-sub"></span></div>
+      <div class="tt-r"><span>From</span><span class="tt-v" id="tt-city"></span></div>
+      <div class="tt-r"><span>Vibe</span><span class="tt-v" id="tt-vibe"></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FORM ══ -->
+<div id="view-form">
+  <div class="hdr"><div class="hdr-l"><span class="s-tag">Station 1</span><div class="h-title">Add <em>Yourself</em></div></div></div>
+  <div class="form-inner">
+
+    <div class="form-section">
+      <span class="sec-lbl">Your selfie — your face becomes your bubble</span>
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div id="uph"><div class="u-icon">📸</div><div class="u-txt">Tap to upload your photo</div></div>
+        <img id="preview-img" alt="">
+      </div>
+      <input type="file" id="file-input" accept="image/*">
+      <div class="scan-bar" id="scan-bar"><div class="scan-fill" id="scan-fill"></div></div>
+    </div>
+
+    <div class="form-section">
+      <label class="fl">Your name / nickname</label>
+      <input class="fi" id="f-name" placeholder="e.g. Jasmine" type="text">
+    </div>
+
+    <div class="form-section">
+      <label class="fl">Main platform</label>
+      <div class="chip-grid">
+        <button class="chip" onclick="pick(this,'platform')">TikTok</button>
+        <button class="chip" onclick="pick(this,'platform')">Instagram</button>
+        <button class="chip" onclick="pick(this,'platform')">YouTube</button>
+        <button class="chip" onclick="pick(this,'platform')">Twitter / X</button>
+        <button class="chip" onclick="pick(this,'platform')">Snapchat</button>
+        <button class="chip" onclick="pick(this,'platform')">BeReal</button>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <label class="fl">Favorite content to make</label>
+      <div class="chip-grid">
+        <button class="chip" onclick="pick(this,'content')">Hair</button>
+        <button class="chip" onclick="pick(this,'content')">Fashion</button>
+        <button class="chip" onclick="pick(this,'content')">Music</button>
+        <button class="chip" onclick="pick(this,'content')">Sports</button>
+        <button class="chip" onclick="pick(this,'content')">Activism</button>
+        <button class="chip" onclick="pick(this,'content')">Academics</button>
+        <button class="chip" onclick="pick(this,'content')">Dance</button>
+        <button class="chip" onclick="pick(this,'content')">Comedy</button>
+        <button class="chip" onclick="pick(this,'content')">Art</button>
+        <button class="chip" onclick="pick(this,'content')">Gaming</button>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <label class="fl">Do you see people who look like you going viral?</label>
+      <div class="viral-row">
+        <button class="vbtn yes" onclick="pickViral('yes',this)">Yes, all the time</button>
+        <button class="vbtn no"  onclick="pickViral('no',this)">Not really</button>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <label class="fl">Favorite subject</label>
+      <select class="fs" id="f-subject">
+        <option value="">Pick one</option>
+        <option>Math</option><option>Science</option><option>English</option>
+        <option>History</option><option>Art</option><option>Music</option>
+        <option>Computer Science</option><option>PE / Sports</option>
+      </select>
+    </div>
+
+    <div class="form-section">
+      <label class="fl">City / State</label>
+      <input class="fi" id="f-city" placeholder="e.g. Atlanta, GA" type="text">
+    </div>
+
+    <div class="form-section">
+      <label class="fl">Your vibe today</label>
+      <div class="chip-grid">
+        <button class="chip" onclick="pick(this,'vibe')">Focused</button>
+        <button class="chip" onclick="pick(this,'vibe')">Hype</button>
+        <button class="chip" onclick="pick(this,'vibe')">Chill</button>
+        <button class="chip" onclick="pick(this,'vibe')">Creative</button>
+        <button class="chip" onclick="pick(this,'vibe')">Tired but here</button>
+        <button class="chip" onclick="pick(this,'vibe')">Ready to run things</button>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <label class="fl">Random fact about you</label>
+      <input class="fi" id="f-fact" placeholder="e.g. I know every Beyoncé album..." type="text">
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitEntry()">Drop me in the universe →</button>
+    <div style="height:1rem;"></div>
+  </div>
+</div>
+
+<!-- ══ ANALYTICS ══ -->
+<div id="view-analytics">
+  <div class="hdr"><div class="hdr-l"><span class="s-tag">Station 1</span><div class="h-title">Live <em>Analytics</em></div></div><div class="hdr-r"><div class="live-pill"><div class="live-dot"></div><span class="live-n" id="live-num2">0</span></div></div></div>
+  <div class="analytics-inner">
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-val" id="st-total">0</div><div class="stat-lbl">Total entries</div></div>
+      <div class="stat-card"><div class="stat-val" id="st-viral" style="color:var(--green-l)">0%</div><div class="stat-lbl">See themselves going viral</div></div>
+    </div>
+    <div class="analytics-grid" id="analytics-grid"></div>
+  </div>
+</div>
+
+<!-- ══ NAV ══ -->
+<div id="nav-bar">
+  <button class="nav-btn active" id="nav-universe" onclick="showView('universe')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="5" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="17" r="2"/></svg>
+    Universe
+  </button>
+  <button class="nav-btn" id="nav-form" onclick="showView('form')">
+    <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>
+    Add Me
+  </button>
+  <button class="nav-btn" id="nav-analytics" onclick="showView('analytics')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+    Analytics
+  </button>
+</div>
+
+<!-- ══ QR ══ -->
+<div id="qr-overlay" onclick="if(event.target===this)closeQR()">
+  <div id="qr-box">
+    <div class="qr-title">Scan to join the universe</div>
+    <div class="qr-sub">Open on your phone and add yourself!</div>
+    <div id="qr-canvas"></div>
+    <div class="qr-url" id="qr-url-txt"></div>
+    <button class="qr-close" onclick="closeQR()">Close</button>
+  </div>
+</div>
+
+<!-- ══ FIREBASE ══ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── CONFIG ──
+const firebaseConfig = {
+  apiKey: "AIzaSyAfCKrfKUCZAcrAXJ3V2Blm2c-5Zahce0Y",
+  authDomain: "station1-we-are-the-data.firebaseapp.com",
+  projectId: "station1-we-are-the-data",
+  storageBucket: "station1-we-are-the-data.firebasestorage.app",
+  messagingSenderId: "206195304543",
+  appId: "1:206195304543:web:d72e548c9b2b0fbbf513ea"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+const col = collection(db, "entries");
+
+// ── COLOUR MAPS ──
+const PC={TikTok:'#E05C3A',Instagram:'#D4537E',YouTube:'#C0392B','Twitter / X':'#378ADD',Snapchat:'#D4A020',BeReal:'#4DBFA0'};
+const CC={Hair:'#D4A843',Fashion:'#D4537E',Music:'#7F77DD',Sports:'#1D9E75',Activism:'#E05C3A',Academics:'#2980B9',Dance:'#A89FF5',Comedy:'#E8A020',Art:'#639922',Gaming:'#085041'};
+const VC={Focused:'#1D9E75',Hype:'#E8A020',Chill:'#7F77DD',Creative:'#D4537E','Tired but here':'#555','Ready to run things':'#E05C3A'};
+const SC={Math:'#1D9E75',Science:'#2980B9',English:'#D4537E',History:'#BA7517',Art:'#E05C3A',Music:'#7F77DD','Computer Science':'#0F6E56','PE / Sports':'#639922'};
+
+// ── STATE ──
+let bubbles      = [];
+let knownIds     = new Set();
+let currentGroup = 'none';
+let groupCenters = {};
+const sel        = {platform:null,content:null,vibe:null};
+let viralAnswer  = null;
+let photoDataUrl = null;
+
+// ── CANVAS ──
+const wrap   = document.getElementById('canvas-wrap');
+const canvas = document.getElementById('bc');
+const ctx    = canvas.getContext('2d');
+const fstrip = document.getElementById('filter-strip');
+
+function getSize(){ return {w:wrap.clientWidth, h:wrap.clientHeight}; }
+function resizeCanvas(){
+  const {w,h}=getSize();
+  canvas.width=w; canvas.height=h;
+  if(currentGroup!=='none') layoutGroups();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// ── BUBBLE FACTORY ──
+function rand(a,b){ return a+Math.random()*(b-a); }
+
+function makeBubble(entry){
+  const {w,h}=getSize();
+  const baseR = Math.max(11, Math.min(30, 750/Math.max(bubbles.length+1,15)));
+  const r = rand(baseR*.8, baseR*1.2);
+  const b = {
+    entry, r,
+    x:rand(r+50,w-r-50), y:rand(r+50,h-r-50),
+    vx:rand(-.45,.45), vy:rand(-.4,.4),
+    phase:Math.random()*Math.PI*2,
+    scale:.01, glow:1.0, shakeT:0,
+    tx:null, ty:null,
+    color: PC[entry.platform]||'#E8A020',
+    ringColor: VC[entry.vibe]||'#E8A020',
+    initials: entry.name.slice(0,2).toUpperCase(),
+    img:null,
+  };
+  if(entry.photo){
+    const img=new Image();
+    img.onload=()=>{ b.img=img; };
+    img.src=entry.photo;
+  }
+  return b;
+}
+
+// ── REAL-TIME LISTENER ──
+function startListening(){
+  const q=query(col, orderBy('ts','asc'));
+  onSnapshot(q, snap=>{
+    let newOne=false;
+    snap.docs.forEach(doc=>{
+      if(knownIds.has(doc.id)) return;
+      knownIds.add(doc.id);
+      const entry=doc.data();
+      const b=makeBubble(entry);
+      bubbles.push(b);
+      newOne=true;
+    });
+    if(newOne){
+      // shrink older bubbles if getting large
+      if(bubbles.length>60) bubbles.forEach(b=>{ b.r=Math.max(10,b.r*.97); });
+      updateCounts();
+      if(currentGroup!=='none') layoutGroups();
+      shakeAll();
+      const last=bubbles[bubbles.length-1];
+      if(last) showFlash(last.entry.name);
+      if(document.getElementById('view-analytics').style.display!=='none') renderAnalytics();
+    }
+    setConnStatus(true);
+  }, err=>{ console.error(err); setConnStatus(false); });
+}
+
+function setConnStatus(ok){
+  const el=document.getElementById('conn-status');
+  el.className=ok?'ok':'err';
+  el.textContent=ok?'● Live':'● Offline';
+}
+
+// ── GROUPING ──
+function getKey(entry){
+  if(currentGroup==='platform') return entry.platform||'Unknown';
+  if(currentGroup==='content')  return entry.content||'Unknown';
+  if(currentGroup==='viral')    return entry.viral==='yes'?'Yes — sees self viral':'Not really';
+  if(currentGroup==='vibe')     return entry.vibe||'Unknown';
+  if(currentGroup==='subject')  return entry.subject||'Unknown';
+  if(currentGroup==='city')     return (entry.city||'Unknown').split(',')[0].trim();
+  return null;
+}
+
+function layoutGroups(){
+  const {w,h}=getSize();
+  if(currentGroup==='none'){
+    groupCenters={}; bubbles.forEach(b=>{b.tx=null;b.ty=null;});
+    renderGLabels(); return;
+  }
+  const groups={};
+  bubbles.forEach(b=>{
+    const k=getKey(b.entry);
+    if(!groups[k]) groups[k]=[];
+    groups[k].push(b);
+  });
+  const keys=Object.keys(groups);
+  const n=keys.length; if(!n) return;
+  const cols=Math.ceil(Math.sqrt(n*(w/h)));
+  const rows=Math.ceil(n/cols);
+  const cw=w/cols, ch=h/rows;
+  groupCenters={};
+  keys.forEach((k,idx)=>{
+    const col=idx%cols, row=Math.floor(idx/cols);
+    const cx=cw*col+cw/2, cy=ch*row+ch/2;
+    let color='#E8A020';
+    if(currentGroup==='platform') color=PC[k]||'#888';
+    if(currentGroup==='content')  color=CC[k]||'#888';
+    if(currentGroup==='vibe')     color=VC[k]||'#888';
+    if(currentGroup==='subject')  color=SC[k]||'#888';
+    if(currentGroup==='viral')    color=k.includes('Yes')?'#1D9E75':'#E05C3A';
+    groupCenters[k]={cx,cy,color,label:k};
+    packCluster(groups[k],cx,cy);
+  });
+  renderGLabels();
+}
+
+function packCluster(members,cx,cy){
+  if(!members.length) return;
+  if(members.length===1){members[0].tx=cx;members[0].ty=cy;return;}
+  const sorted=[...members].sort((a,b)=>b.r-a.r);
+  sorted[0].tx=cx; sorted[0].ty=cy;
+  const placed=[sorted[0]];
+  for(let i=1;i<sorted.length;i++){
+    const b=sorted[i]; let best=null,bestD=Infinity;
+    for(const anchor of placed){
+      for(let s=0;s<32;s++){
+        const angle=(s/32)*Math.PI*2;
+        const dist=anchor.r+b.r+3;
+        const tx=anchor.tx+Math.cos(angle)*dist;
+        const ty=anchor.ty+Math.sin(angle)*dist;
+        let ok=true;
+        for(const p of placed){
+          const dx=tx-p.tx,dy=ty-p.ty;
+          if(Math.sqrt(dx*dx+dy*dy)<p.r+b.r+2){ok=false;break;}
+        }
+        if(!ok) continue;
+        const d=Math.sqrt((tx-cx)**2+(ty-cy)**2);
+        if(d<bestD){bestD=d;best={tx,ty};}
+      }
+    }
+    if(best){b.tx=best.tx;b.ty=best.ty;placed.push(b);}
+    else{const a=Math.random()*Math.PI*2;b.tx=cx+Math.cos(a)*40;b.ty=cy+Math.sin(a)*40;placed.push(b);}
+  }
+}
+
+function renderGLabels(){
+  const el=document.getElementById('glabels'); el.innerHTML='';
+  if(currentGroup==='none') return;
+  Object.values(groupCenters).forEach(({cx,cy,color,label})=>{
+    const d=document.createElement('div');
+    d.className='glabel on';
+    d.style.left=cx+'px'; d.style.top=(cy-55)+'px';
+    d.style.color=hexA(color,.3);
+    d.textContent=label;
+    el.appendChild(d);
+  });
+}
+
+window.setGroup=function(g,btn){
+  currentGroup=g;
+  document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(g==='none') bubbles.forEach(b=>{b.tx=null;b.ty=null;});
+  layoutGroups();
+};
+
+// ── DRAW LOOP ──
+function draw(){
+  const {w,h}=getSize();
+  ctx.clearRect(0,0,w,h);
+  for(let i=0;i<60;i++){
+    ctx.fillStyle='rgba(255,255,255,0.012)';
+    ctx.beginPath();
+    ctx.arc((Math.sin(i*127.1)*.5+.5)*w,(Math.sin(i*311.7)*.5+.5)*h,.7,0,Math.PI*2);
+    ctx.fill();
+  }
+  if(currentGroup!=='none'){
+    Object.values(groupCenters).forEach(({cx,cy,color})=>{
+      const g=ctx.createRadialGradient(cx,cy,0,cx,cy,120);
+      g.addColorStop(0,hexA(color,.07)); g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.beginPath();ctx.arc(cx,cy,120,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+    });
+  }
+  const now=Date.now()*.001;
+  bubbles.forEach((b,i)=>{
+    if(b.scale<1) b.scale=Math.min(1,b.scale+.06);
+    if(b.glow>0)  b.glow=Math.max(0,b.glow-.009);
+    let sx=0,sy=0;
+    if(b.shakeT>0){b.shakeT--;const amt=(b.shakeT/20)*5;sx=(Math.random()-.5)*amt;sy=(Math.random()-.5)*amt;}
+    if(b.tx!==null&&b.ty!==null){
+      const dx=b.tx-b.x,dy=b.ty-b.y,dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist>.4){const sp=.09+Math.min(dist*.003,.06);b.vx+=dx*sp;b.vy+=dy*sp;}
+      b.vx*=.70; b.vy*=.70;
+      b.x+=b.vx+sx; b.y+=b.vy+sy;
+    } else {
+      b.x+=b.vx+Math.sin(now*.65+b.phase)*.2+sx;
+      b.y+=b.vy+Math.cos(now*.5+b.phase*1.2)*.15+sy;
+      if(b.x-b.r<0){b.x=b.r;b.vx=Math.abs(b.vx);}
+      if(b.x+b.r>w){b.x=w-b.r;b.vx=-Math.abs(b.vx);}
+      if(b.y-b.r<0){b.y=b.r;b.vy=Math.abs(b.vy);}
+      if(b.y+b.r>h){b.y=h-b.r;b.vy=-Math.abs(b.vy);}
+      const spd=Math.sqrt(b.vx*b.vx+b.vy*b.vy);
+      if(spd>.7){b.vx=b.vx/spd*.7;b.vy=b.vy/spd*.7;}
+    }
+    if(bubbles.length<80){
+      const rep=currentGroup==='none'?.28:.1;
+      for(let j=i+1;j<bubbles.length;j++){
+        const o=bubbles[j];
+        const dx=b.x-o.x,dy=b.y-o.y,dist=Math.sqrt(dx*dx+dy*dy);
+        const minD=b.r+o.r+(currentGroup==='none'?4:2);
+        if(dist<minD&&dist>0){
+          const f=(minD-dist)/minD*rep,nx=dx/dist,ny=dy/dist;
+          b.vx+=nx*f;b.vy+=ny*f;o.vx-=nx*f;o.vy-=ny*f;
+        }
+      }
+    }
+    ctx.save();
+    ctx.translate(b.x,b.y);
+    ctx.scale(b.scale,b.scale);
+    if(b.glow>0){
+      const g=ctx.createRadialGradient(0,0,b.r*.3,0,0,b.r*3);
+      g.addColorStop(0,hexA(b.ringColor,b.glow*.5));g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.beginPath();ctx.arc(0,0,b.r*3,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+    }
+    ctx.beginPath();ctx.arc(0,0,b.r+2.5,0,Math.PI*2);
+    ctx.strokeStyle=hexA(b.ringColor,.85);ctx.lineWidth=2;ctx.stroke();
+    ctx.save();
+    ctx.beginPath();ctx.arc(0,0,b.r,0,Math.PI*2);ctx.clip();
+    if(b.img){
+      const sz=b.r*2,iw=b.img.naturalWidth,ih=b.img.naturalHeight;
+      const sc=Math.max(sz/iw,sz/ih),sw=sz/sc,sh=sz/sc;
+      ctx.drawImage(b.img,(iw-sw)/2,(ih-sh)/2,sw,sh,-b.r,-b.r,sz,sz);
+      ctx.fillStyle=hexA(b.color,.15);ctx.fillRect(-b.r,-b.r,sz,sz);
+    } else {
+      ctx.fillStyle=hexA(b.color,.22);ctx.fillRect(-b.r,-b.r,b.r*2,b.r*2);
+      ctx.beginPath();ctx.arc(0,0,b.r*.55,0,Math.PI*2);
+      ctx.fillStyle=hexA(b.color,.65);ctx.fill();
+    }
+    ctx.restore();
+    ctx.fillStyle='rgba(255,255,255,'+(b.img?.85:.95)+')';
+    const fs=Math.round(b.r*(b.img?.26:.4));
+    ctx.font=`700 ${fs}px Syne,sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(b.initials,0,b.img?b.r*.58:0);
+    ctx.restore();
+  });
+  requestAnimationFrame(draw);
+}
+
+// ── TOOLTIP ──
+const tip=document.getElementById('tooltip');
+canvas.addEventListener('mousemove',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  let hit=null;
+  for(const b of [...bubbles].reverse()){
+    if(Math.sqrt((mx-b.x)**2+(my-b.y)**2)<b.r*b.scale){hit=b;break;}
+  }
+  if(hit){
+    document.getElementById('tt-name').textContent=hit.entry.name;
+    document.getElementById('tt-plat').textContent=hit.entry.platform||'—';
+    document.getElementById('tt-cont').textContent=hit.entry.content||'—';
+    const ve=document.getElementById('tt-vir');
+    ve.textContent=hit.entry.viral==='yes'?'Yes, all the time':'Not really';
+    ve.className='tt-v '+(hit.entry.viral==='yes'?'tt-yes':'tt-no');
+    document.getElementById('tt-sub').textContent=hit.entry.subject||'—';
+    document.getElementById('tt-city').textContent=hit.entry.city||'—';
+    document.getElementById('tt-vibe').textContent=hit.entry.vibe||'—';
+    tip.style.opacity='1';
+    let tx=e.clientX-rect.left+hit.r+10,ty=e.clientY-rect.top-60;
+    if(tx+185>canvas.width)tx=e.clientX-rect.left-195;
+    if(ty<0)ty=5;
+    tip.style.left=tx+'px';tip.style.top=ty+'px';
+  } else tip.style.opacity='0';
+});
+canvas.addEventListener('mouseleave',()=>{tip.style.opacity='0';});
+canvas.addEventListener('touchstart',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const t=e.touches[0];
+  const mx=t.clientX-rect.left,my=t.clientY-rect.top;
+  for(const b of [...bubbles].reverse()){
+    if(Math.sqrt((mx-b.x)**2+(my-b.y)**2)<b.r*b.scale*1.5){
+      document.getElementById('tt-name').textContent=b.entry.name;
+      document.getElementById('tt-plat').textContent=b.entry.platform||'—';
+      document.getElementById('tt-cont').textContent=b.entry.content||'—';
+      document.getElementById('tt-sub').textContent=b.entry.subject||'—';
+      document.getElementById('tt-city').textContent=b.entry.city||'—';
+      tip.style.opacity='1';
+      tip.style.left=Math.min(mx+10,canvas.width-190)+'px';
+      tip.style.top=Math.max(my-70,5)+'px';
+      setTimeout(()=>{tip.style.opacity='0';},2000);
+      break;
+    }
+  }
+},{passive:true});
+
+// ── UPLOAD ──
+document.getElementById('file-input').addEventListener('change',e=>{
+  const file=e.target.files[0]; if(!file) return;
+  // Resize to max 400px before storing to keep Firestore doc small
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=400;
+      const scale=Math.min(1,MAX/Math.max(img.width,img.height));
+      const oc=document.createElement('canvas');
+      oc.width=Math.round(img.width*scale);
+      oc.height=Math.round(img.height*scale);
+      oc.getContext('2d').drawImage(img,0,0,oc.width,oc.height);
+      photoDataUrl=oc.toDataURL('image/jpeg',.7);
+      document.getElementById('preview-img').src=photoDataUrl;
+      document.getElementById('preview-img').style.display='block';
+      document.getElementById('uph').style.display='none';
+      document.getElementById('upload-zone').classList.add('filled');
+      const bar=document.getElementById('scan-bar');
+      const fill=document.getElementById('scan-fill');
+      bar.style.display='block'; fill.style.width='0%';
+      setTimeout(()=>{fill.style.width='100%';},60);
+      setTimeout(()=>{bar.style.display='none';},2200);
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// ── CHIPS ──
+window.pick=function(btn,group){
+  btn.closest('.chip-grid').querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+  btn.classList.add('sel');
+  sel[group]=btn.textContent;
+};
+window.pickViral=function(val,btn){
+  document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  viralAnswer=val;
+};
+
+// ── SUBMIT ──
+window.submitEntry=async function(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){document.getElementById('f-name').focus();return;}
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true; btn.textContent='Dropping you in...';
+  const entry={
+    name,
+    platform:sel.platform||'',
+    content:sel.content||'',
+    viral:viralAnswer||'',
+    subject:document.getElementById('f-subject').value,
+    city:document.getElementById('f-city').value.trim(),
+    vibe:sel.vibe||'',
+    fact:document.getElementById('f-fact').value.trim(),
+    photo:photoDataUrl||'',
+    ts:serverTimestamp(),
+  };
+  try{
+    await addDoc(col,entry);
+    resetForm();
+    showView('universe');
+  } catch(err){
+    console.error(err);
+    alert('Could not save — check your internet connection.');
+  }
+  btn.disabled=false; btn.textContent='Drop me in the universe →';
+};
+
+function resetForm(){
+  document.getElementById('f-name').value='';
+  document.getElementById('f-city').value='';
+  document.getElementById('f-fact').value='';
+  document.getElementById('f-subject').value='';
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+  document.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('sel'));
+  sel.platform=null;sel.content=null;sel.vibe=null;
+  viralAnswer=null;
+  document.getElementById('preview-img').style.display='none';
+  document.getElementById('uph').style.display='block';
+  document.getElementById('upload-zone').classList.remove('filled');
+  document.getElementById('file-input').value='';
+  photoDataUrl=null;
+}
+
+// ── ANALYTICS ──
+function tally(key){
+  const c={};
+  bubbles.forEach(b=>{const v=b.entry[key];if(v)c[v]=(c[v]||0)+1;});
+  return c;
+}
+function renderAnalytics(){
+  const n=bubbles.length;
+  document.getElementById('st-total').textContent=n;
+  const yes=bubbles.filter(b=>b.entry.viral==='yes').length;
+  document.getElementById('st-viral').textContent=n?Math.round(yes/n*100)+'%':'0%';
+  const cats=[
+    {key:'platform',label:'Platform',colors:PC},
+    {key:'content', label:'Content type',colors:CC},
+    {key:'viral',   label:'Sees self going viral',special:true},
+    {key:'vibe',    label:'Vibe today',colors:VC},
+    {key:'subject', label:'Favorite subject',colors:SC},
+    {key:'city',    label:'City',colors:null},
+  ];
+  const grid=document.getElementById('analytics-grid');
+  grid.innerHTML='';
+  cats.forEach(cat=>{
+    let counts={};
+    if(cat.special){
+      const y=bubbles.filter(b=>b.entry.viral==='yes').length;
+      const no=bubbles.filter(b=>b.entry.viral==='no').length;
+      if(y) counts['Yes']=y;
+      if(no) counts['Not really']=no;
+    } else { counts=tally(cat.key); }
+    const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+    const max=entries.length?entries[0][1]:1;
+    const card=document.createElement('div');
+    card.className='chart-card';
+    card.innerHTML=`<div class="chart-title">${cat.label}<span class="chart-count">${n} entries</span></div><div class="bar-list"></div>`;
+    grid.appendChild(card);
+    const bl=card.querySelector('.bar-list');
+    if(!entries.length){bl.innerHTML='<div style="color:#555;font-size:12px;">No data yet</div>';return;}
+    const pal=['#E8A020','#1D9E75','#7F77DD','#E05C3A','#D4537E','#2980B9'];
+    entries.forEach(([label,count],idx)=>{
+      let color=pal[idx%pal.length];
+      if(cat.colors){const ok=cat.special?(label==='Yes'?'yes':'no'):label;color=cat.colors[ok]||cat.colors[label]||color;}
+      if(cat.special){color=label==='Yes'?'#1D9E75':'#E05C3A';}
+      const pct=Math.round((count/max)*100);
+      const row=document.createElement('div');
+      row.className='bar-row';
+      row.innerHTML=`<span class="bar-lbl" title="${label}">${label}</span><div class="bar-track"><div class="bar-fill" style="width:0%;background:${color}"><span class="bar-num">${count}</span></div></div>`;
+      bl.appendChild(row);
+      requestAnimationFrame(()=>setTimeout(()=>{row.querySelector('.bar-fill').style.width=pct+'%';},30));
+    });
+  });
+}
+
+// ── HELPERS ──
+function updateCounts(){
+  const n=bubbles.length;
+  document.getElementById('live-num').textContent=n;
+  document.getElementById('live-num2').textContent=n;
+}
+function shakeAll(){ bubbles.forEach(b=>{b.shakeT=22;}); }
+function showFlash(name){
+  const el=document.getElementById('flash');
+  el.textContent=`${name} just dropped into the universe!`;
+  el.style.opacity='1';
+  setTimeout(()=>{el.style.opacity='0';},2500);
+}
+function hexA(hex,alpha){
+  const r=parseInt(hex.slice(1,3),16)||100;
+  const g=parseInt(hex.slice(3,5),16)||100;
+  const b=parseInt(hex.slice(5,7),16)||100;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ── VIEW SWITCHING ──
+window.showView=function(v){
+  document.getElementById('view-universe').style.display=v==='universe'?'flex':'none';
+  document.getElementById('view-form').style.display=v==='form'?'block':'none';
+  document.getElementById('view-analytics').style.display=v==='analytics'?'block':'none';
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('nav-'+v).classList.add('active');
+  if(v==='analytics') renderAnalytics();
+  if(v==='universe')  resizeCanvas();
+};
+
+// ── QR ──
+let qrDone=false;
+window.openQR=function(){
+  document.getElementById('qr-overlay').classList.add('open');
+  if(!qrDone){
+    const url=window.location.href;
+    document.getElementById('qr-url-txt').textContent=url;
+    try{
+      new QRCode(document.getElementById('qr-canvas'),{
+        text:url,width:200,height:200,
+        colorDark:'#0E0D0A',colorLight:'#ffffff',
+        correctLevel:QRCode.CorrectLevel.M
+      });
+    }catch(e){}
+    qrDone=true;
+  }
+};
+window.closeQR=function(){ document.getElementById('qr-overlay').classList.remove('open'); };
+
+// ── INIT ──
+resizeCanvas();
+draw();
+startListening();
+
+</script>
+</body>
+</html>
