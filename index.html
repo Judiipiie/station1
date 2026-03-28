@@ -1,5 +1,71 @@
-<!DOCTYPE html>
-<html lang="en">
+<!--
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              WE ARE THE DATA — STATION 1                                    ║
+║              HBCU x Data Science | Black Girl Platform Power                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+WHAT THIS IS
+────────────
+A live, real-time interactive data collection app for middle/high school girls.
+Each girl scans a QR code, fills in her info, and her bubble appears instantly
+on every screen in the room — including the projector. The bubble universe
+updates live as entries come in. Facilitators can group bubbles by platform,
+content type, vibe, subject, city, and more with one tap.
+
+HOW TO HOST (GitHub Pages)
+──────────────────────────
+1. Create a new PUBLIC repository on github.com
+2. Upload this file and rename it to: index.html
+3. Go to Settings → Pages → Branch: main → folder: /root → Save
+4. Wait ~60 seconds → your URL will be: https://YOURUSERNAME.github.io/REPONAME
+5. That URL is what the QR code will point to — share it with girls or display
+   the QR from the app's ⊞ button
+
+FIREBASE SETUP
+──────────────
+Project:   station1-we-are-the-data
+Console:   https://console.firebase.google.com
+Database:  Firestore → entries collection (auto-created on first submit)
+
+FIRESTORE SECURITY RULES (paste into Firebase → Firestore → Rules)
+───────────────────────────────────────────────────────────────────
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /entries/{entry} {
+      allow read, write: if true;
+    }
+  }
+}
+
+HOW TO USE ON THE DAY
+─────────────────────
+PROJECTED SCREEN (facilitator laptop):
+  → Open the GitHub Pages URL in Chrome fullscreen (F11)
+  → Stay on the Universe tab — bubbles appear as girls submit
+  → Use the Group By filters to cluster bubbles live (e.g. click "Content type"
+    to show all Hair girls together, Fashion girls together, etc.)
+  → Click ⊞ to show the QR code on screen so girls can scan
+
+GIRLS' PHONES:
+  → Scan the QR code → opens the app in their browser (no install needed)
+  → Tap "Add Me" → fill in the form → tap "Drop me in the universe"
+  → Their bubble appears on EVERY screen instantly
+
+ANALYTICS TAB:
+  → Switch to Analytics at any time to show live bar charts for every category
+  → Great for discussion: "Look — 80% of you picked TikTok. What does that tell us?"
+
+CLEARING DATA BETWEEN SESSIONS
+───────────────────────────────
+Go to Firebase Console → Firestore → entries collection → delete all documents
+This wipes the universe for a fresh session.
+
+TIPS FOR 50–100+ GIRLS
+───────────────────────
+→ Bubbles automatically shrink as more people join — all 100 will be visible
+→ Physics repulsion turns off above 80 bubbles to keep animation smooth
+→ Photos are compressed to 400px / 70
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -824,3 +890,4 @@ startListening();
 </script>
 </body>
 </html>
+
